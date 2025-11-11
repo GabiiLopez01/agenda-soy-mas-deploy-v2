@@ -1,4 +1,6 @@
-non:
+name: Deploy Mobile Backend with Ngrok
+
+on:
   push:
     branches: [ main ]
   workflow_dispatch:
