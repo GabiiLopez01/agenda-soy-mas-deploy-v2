@@ -1,0 +1,63 @@
+name: Deploy Mobile Backend with Ngrok
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy-with-ngrok:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install ngrok
+        run: |
+          wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+          tar xzf ngrok-v3-stable-linux-amd64.tgz
+          sudo mv ngrok /usr/local/bin/
+          ngrok --version
+      
+      - name: Start server with ngrok
+        env:
+          NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        run: |
+          # Iniciar tu servidor en background
+          npm start &
+          SERVER_PID=$!
+          
+          echo "Configurando ngrok..."
+          ngrok authtoken $NGROK_AUTH_TOKEN
+          
+          # Iniciar ngrok
+          echo "Iniciando túnel ngrok..."
+          ngrok http 3000 > ngrok.log 2>&1 &
+          NGROK_PID=$!
+          
+          # Esperar a que ngrok esté listo
+          sleep 10
+          
+          # Obtener URL pública
+          echo "Obteniendo URL de ngrok..."
+          NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+          
+          echo "Tu aplicación está disponible en: $NGROK_URL"
+          echo "NGROK_URL=$NGROK_URL" >> $GITHUB_ENV
+          
+          # Mostrar logs de ngrok
+          echo "Logs de ngrok:"
+          cat ngrok.log
+          
+          # Mantener el servidor corriendo (timeout después de 10 minutos)
+          timeout 600 tail -f /dev/null
