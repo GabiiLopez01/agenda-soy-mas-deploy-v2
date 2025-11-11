@@ -10,54 +10,94 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup Node.js
+      - name: 🔧 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
       
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm ci
       
-      - name: Install ngrok
+      - name: 🔐 Install ngrok and jq
         run: |
+          # Instalar ngrok
           wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
           tar xzf ngrok-v3-stable-linux-amd64.tgz
           sudo mv ngrok /usr/local/bin/
-          ngrok --version
+          
+          # Instalar jq para procesar JSON
+          sudo apt-get update
+          sudo apt-get install -y jq
+          
+          # Verificar instalación
+          ngrok version
+          jq --version
       
-      - name: Start server with ngrok
+      - name: 🚀 Start server with ngrok
         env:
           NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
         run: |
-          # Iniciar tu servidor en background
-          npm start &
-          SERVER_PID=$!
-          
-          echo "Configurando ngrok..."
+          # Configurar ngrok PRIMERO
+          echo "🔧 Configurando ngrok..."
           ngrok authtoken $NGROK_AUTH_TOKEN
           
-          # Iniciar ngrok
-          echo "Iniciando túnel ngrok..."
-          ngrok http 3000 > ngrok.log 2>&1 &
+          # Iniciar ngrok en background
+          echo "🌐 Iniciando túnel ngrok..."
+          ngrok http 8080 --log=stdout > ngrok.log 2>&1 &
           NGROK_PID=$!
+          echo "Ngrok PID: $NGROK_PID"
           
           # Esperar a que ngrok esté listo
+          echo "⏳ Esperando que ngrok se inicialice..."
           sleep 10
           
-          # Obtener URL pública
-          echo "Obteniendo URL de ngrok..."
-          NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+          # Iniciar servidor de React en background
+          echo "🔄 Iniciando servidor de React..."
+          npm start &
+          SERVER_PID=$!
+          echo "Server PID: $SERVER_PID"
           
-          echo "Tu aplicación está disponible en: $NGROK_URL"
-          echo "NGROK_URL=$NGROK_URL" >> $GITHUB_ENV
+          # Esperar que el servidor esté listo
+          sleep 15
           
-          # Mostrar logs de ngrok
-          echo "Logs de ngrok:"
-          cat ngrok.log
+          # Obtener URL pública de ngrok
+          echo "📡 Obteniendo URL de ngrok..."
+          MAX_RETRIES=10
+          RETRY_COUNT=0
+          NGROK_URL=""
           
-          # Mantener el servidor corriendo (timeout después de 10 minutos)
-          timeout 600 tail -f /dev/null
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ -z "$NGROK_URL" ]; do
+            sleep 5
+            echo "Intento $((RETRY_COUNT + 1)) de obtener URL..."
+            NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url // empty')
+            if [ -n "$NGROK_URL" ]; then
+              break
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+          done
+          
+          if [ -z "$NGROK_URL" ]; then
+            echo "❌ No se pudo obtener la URL de ngrok después de $MAX_RETRIES intentos"
+            echo "📋 Logs de ngrok:"
+            cat ngrok.log
+            exit 1
+          fi
+          
+          echo "✅ ==========================================="
+          echo "✅ 🎉 TU APLICACIÓN ESTÁ EN LÍNEA!"
+          echo "✅ URL PÚBLICA: $NGROK_URL"
+          echo "✅ ==========================================="
+          
+          # Probar que la API responde
+          echo "🧪 Probando conexión..."
+          curl -s --retry 3 --retry-delay 5 $NGROK_URL || echo "⚠️  La app podría estar iniciando..."
+          
+          # Mantener el job corriendo para testing (30 minutos)
+          echo "⏰ Manteniendo servicio activo por 30 minutos..."
+          sleep 1800
+          
+          echo "🛑 Finalizando servicio..."
