@@ -1,0 +1,63 @@
+@font-face {
+  font-family: 'Adlery';
+  src: url("../fuentes/Adlery.ttf");
+}
+@font-face {
+  font-family: 'Seasons';
+  src: url("../fuentes/SeasonsLight.ttf");
+}
+
+.inicio-contenedor{
+    background-color: #ffffff;
+    background-image: url('../imagenes/fondoInicio.png');
+    background-repeat: no-repeat;
+    background-size:cover;
+    background-attachment: fixed;
+    background-position: center;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.logo-contenedor{
+    width: 100vw;
+    height: 100px;
+}
+
+.logo{
+    width: 170px;
+    height: 90px;
+    padding-left: 20px;
+    object-fit: cover;
+}
+
+
+.titulo{
+    font-family: 'Seasons', serif;
+    font-size: 3rem;
+    font-weight: 400;
+    color: #ffffff;
+    text-align: center;
+}
+.imagen-inicio{
+    height: 40vh;
+    width: 100%;
+    object-fit: cover;
+}
+
+.frase-contenedor{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.frase{
+    font-family: 'Adlery', cursive;
+    font-size: 2.7rem;
+    font-weight: 500;
+    color: #A52488;
+    text-align: center;
+}
