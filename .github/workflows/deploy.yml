@@ -1,6 +1,4 @@
-name: Deploy Mobile Backend with Ngrok
-
-on:
+non:
   push:
     branches: [ main ]
   workflow_dispatch:
@@ -24,80 +22,106 @@ jobs:
       
       - name: 🔐 Install ngrok and jq
         run: |
-          # Instalar ngrok
           wget -q https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
           tar xzf ngrok-v3-stable-linux-amd64.tgz
           sudo mv ngrok /usr/local/bin/
-          
-          # Instalar jq para procesar JSON
           sudo apt-get update
-          sudo apt-get install -y jq
-          
-          # Verificar instalación
-          ngrok version
-          jq --version
+          sudo apt-get install -y jq curl
       
-      - name: 🚀 Start server with ngrok
+      - name: 🚀 Start React and ngrok
         env:
           NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
         run: |
-          # Configurar ngrok PRIMERO
+          # Configurar ngrok
           echo "🔧 Configurando ngrok..."
-          ngrok authtoken $NGROK_AUTH_TOKEN
+          ngrok authtoken "$NGROK_AUTH_TOKEN"
+          echo "✅ Ngrok autenticado"
           
-          # Iniciar ngrok en background
-          echo "🌐 Iniciando túnel ngrok..."
-          ngrok http 8080 --log=stdout > ngrok.log 2>&1 &
+          # Iniciar servidor de React
+          echo "🔄 Iniciando React en localhost:3000..."
+          npm start &
+          REACT_PID=$!
+          echo "React PID: $REACT_PID"
+          
+          # Esperar 25 segundos para que React se inicie completamente
+          echo "⏳ Esperando que React se inicialice (25 segundos)..."
+          sleep 25
+          
+          # Verificar que React está corriendo
+          echo "🔍 Verificando estado de React..."
+          if curl -s -f http://localhost:3000 > /dev/null; then
+            echo "✅ ✅ React está funcionando correctamente en puerto 3000"
+          else
+            echo "⚠️ React no responde aún, continuando..."
+            # Mostrar procesos para debug
+            echo "📊 Procesos Node.js:"
+            ps aux | grep node || echo "No hay procesos node"
+          fi
+          
+          # Iniciar ngrok en puerto 3000
+          echo "🌐 Iniciando ngrok en puerto 3000..."
+          ngrok http 3000 --log=stdout > ngrok.log 2>&1 &
           NGROK_PID=$!
           echo "Ngrok PID: $NGROK_PID"
           
-          # Esperar a que ngrok esté listo
-          echo "⏳ Esperando que ngrok se inicialice..."
-          sleep 10
-          
-          # Iniciar servidor de React en background
-          echo "🔄 Iniciando servidor de React..."
-          npm start &
-          SERVER_PID=$!
-          echo "Server PID: $SERVER_PID"
-          
-          # Esperar que el servidor esté listo
+          # Esperar 15 segundos para que ngrok se conecte
+          echo "⏳ Esperando conexión de ngrok (15 segundos)..."
           sleep 15
           
-          # Obtener URL pública de ngrok
+          # Obtener URL pública
           echo "📡 Obteniendo URL de ngrok..."
-          MAX_RETRIES=10
-          RETRY_COUNT=0
           NGROK_URL=""
-          
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ -z "$NGROK_URL" ]; do
-            sleep 5
-            echo "Intento $((RETRY_COUNT + 1)) de obtener URL..."
+          for i in {1..6}; do
+            echo "Intento $i/6..."
             NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url // empty')
+            
             if [ -n "$NGROK_URL" ]; then
+              echo "✅ URL obtenida: $NGROK_URL"
               break
             fi
-            RETRY_COUNT=$((RETRY_COUNT + 1))
+            
+            if [ $i -lt 6 ]; then
+              sleep 5
+            fi
           done
           
           if [ -z "$NGROK_URL" ]; then
-            echo "❌ No se pudo obtener la URL de ngrok después de $MAX_RETRIES intentos"
+            echo "❌ No se pudo obtener URL de ngrok"
             echo "📋 Logs de ngrok:"
             cat ngrok.log
+            echo "🔍 Estado de procesos:"
+            ps aux | grep ngrok
             exit 1
           fi
           
-          echo "✅ ==========================================="
-          echo "✅ 🎉 TU APLICACIÓN ESTÁ EN LÍNEA!"
-          echo "✅ URL PÚBLICA: $NGROK_URL"
-          echo "✅ ==========================================="
+          # ÉXITO - Mostrar información
+          echo " "
+          echo "🎉 ==========================================="
+          echo "🎉 ¡DEPLOYMENT EXITOSO!"
+          echo "🎉 ==========================================="
+          echo "🌐 URL PÚBLICA: $NGROK_URL"
+          echo "🔧 Puerto local: 3000"
+          echo "⏰ Túnel activo por 20 minutos"
+          echo "🎉 ==========================================="
+          echo " "
           
-          # Probar que la API responde
-          echo "🧪 Probando conexión..."
-          curl -s --retry 3 --retry-delay 5 $NGROK_URL || echo "⚠️  La app podría estar iniciando..."
+          # Probar la URL pública
+          echo "🧪 Probando conexión pública..."
+          if curl -s --max-time 10 "$NGROK_URL" > /dev/null; then
+            echo "✅ ✅ La aplicación responde desde internet!"
+          else
+            echo "⚠️  La aplicación podría estar cargando..."
+          fi
           
-          # Mantener el job corriendo para testing (30 minutos)
-          echo "⏰ Manteniendo servicio activo por 30 minutos..."
-          sleep 1800
+          # Instrucciones para usar
+          echo " "
+          echo "📱 PARA CONECTAR TU APP MÓVIL:"
+          echo "1. Usa esta URL en tu app: $NGROK_URL"
+          echo "2. Reemplaza todas las llamadas a localhost:3000"
+          echo "3. Ejemplo: axios.get('$NGROK_URL/api/data')"
+          echo " "
           
-          echo "🛑 Finalizando servicio..."
+          # Mantener el servicio activo (20 minutos)
+          echo "⏰ Manteniendo servicio activo por 20 minutos..."
+          sleep 1200
+          echo "🛑 Tiempo completado - Servicio finalizado"
