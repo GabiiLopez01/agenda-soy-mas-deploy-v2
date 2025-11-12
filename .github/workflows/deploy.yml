@@ -100,10 +100,10 @@ jobs:
           
           # ÉXITO - Mostrar información
           echo " "
-          echo "🎉 ==========================================="
-          echo "🎉 ¡DEPLOYMENT EXITOSO!"
-          echo "🎉 ==========================================="
-          echo "🌐 URL PÚBLICA: $NGROK_URL"
+          echo " ==========================================="
+          echo " ¡DEPLOYMENT EXITOSO!"
+          echo " ==========================================="
+          echo " URL PÚBLICA: $NGROK_URL"
           echo "🔧 Puerto local: 3000"
           echo "⏰ Túnel activo por 20 minutos"
           echo "🎉 ==========================================="
