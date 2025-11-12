@@ -37,9 +37,9 @@ jobs:
           BROWSER: none
         run: |
           # Configurar ngrok
-          echo "🔧 Configurando ngrok..."
+          echo " Configurando ngrok..."
           ngrok authtoken "$NGROK_AUTH_TOKEN"
-          echo "✅ Ngrok autenticado"
+          echo " Ngrok autenticado"
           
           # Iniciar servidor de React
           echo "🔄 Iniciando React en localhost:3000..."
@@ -125,7 +125,7 @@ jobs:
           echo "3. Ejemplo: axios.get('$NGROK_URL/api/data')"
           echo " "
           
-          # Mantener el servicio activo (20 minutos)
-          echo "⏰ Manteniendo servicio activo por 20 minutos..."
-          sleep 1200
+          # Mantener el servicio activo (40 minutos)
+          echo "⏰ Manteniendo servicio activo por 40 minutos..."
+          sleep 2400
           echo "🛑 Tiempo completado - Servicio finalizado"
